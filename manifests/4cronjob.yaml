@@ -1,0 +1,24 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: helm-scraper-cronjob
+  namespace: helm-scraper
+spec:
+  schedule: "0 * * * *"  # Programar para que se ejecute cada hora
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: helm-scraper  # Usar el ServiceAccount configurado
+          containers:
+            - name: helm-scraper
+              image: lalomiranda/helm-scraper:0.0.3
+              command: ["python", "app.py"]  # Comando para ejecutar la aplicación
+              resources:
+                requests:
+                  memory: "64Mi"
+                  cpu: "250m"
+                limits:
+                  memory: "128Mi"
+                  cpu: "500m"
+          restartPolicy: Never  # Evitar reiniciar el contenedor si falla
