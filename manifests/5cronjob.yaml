@@ -12,8 +12,19 @@ spec:
           serviceAccountName: helm-scraper  # Usar el ServiceAccount configurado
           containers:
             - name: helm-scraper
-              image: lalomiranda/helm-scraper:0.0.3
+              image: lalomiranda/helm-scraper:0.0.4
               command: ["python", "app.py"]  # Comando para ejecutar la aplicación
+              env:
+                - name: NOTION_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: helm-scraper-secret
+                      key: NOTION_TOKEN
+                - name: DATABASE_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: helm-scraper-secret
+                      key: DATABASE_ID
               resources:
                 requests:
                   memory: "64Mi"

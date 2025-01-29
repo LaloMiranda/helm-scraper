@@ -18,11 +18,13 @@ RUN curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.g
 # Establecer el directorio de trabajo
 WORKDIR /app
 
-# Copiar el script de la aplicación
+# Copiar los archivos del proyecto
 COPY app.py /app/
+COPY notion_integration.py /app/
+COPY requirements.txt /app/
 
 # Instalar dependencias de Python
-RUN pip install --no-cache-dir kubernetes
+RUN pip install -r requirements.txt
 
 # Configurar el comando predeterminado
 CMD ["python", "app.py"]
