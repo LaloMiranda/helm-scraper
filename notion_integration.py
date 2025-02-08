@@ -22,7 +22,7 @@ def get_release_page_id(name):
         print(f"Error al buscar la release en Notion: {e}")
         return None
 
-def add_or_update_release(name, revision, app_version, chart_version):
+def add_or_update_release(name, namespace, app_version, chart_version, manager):
     """
     Agrega o actualiza una release en la base de datos de Notion.
     """
@@ -35,9 +35,10 @@ def add_or_update_release(name, revision, app_version, chart_version):
                 **{
                     "page_id": page_id,
                     "properties": {
-                        "Revision": {"number": revision},
+                        "Namespace": {"rich_text": [{"text": {"content": namespace}}]},
                         "App Version": {"rich_text": [{"text": {"content": app_version}}]},
-                        "Chart Version": {"rich_text": [{"text": {"content": chart_version}}]}
+                        "Chart Version": {"rich_text": [{"text": {"content": chart_version}}]},
+                        "Manager": {"rich_text": [{"text": {"content": manager}}]}
                     }
                 }
             )
@@ -52,9 +53,10 @@ def add_or_update_release(name, revision, app_version, chart_version):
                     "parent": {"database_id": DATABASE_ID},
                     "properties": {
                         "Name": {"title": [{"text": {"content": name}}]},
-                        "Revision": {"number": revision},
+                        "Namespace": {"rich_text": [{"text": {"content": namespace}}]},
                         "App Version": {"rich_text": [{"text": {"content": app_version}}]},
-                        "Chart Version": {"rich_text": [{"text": {"content": chart_version}}]}
+                        "Chart Version": {"rich_text": [{"text": {"content": chart_version}}]},
+                        "Manager": {"rich_text": [{"text": {"content": manager}}]}
                     }
                 }
             )

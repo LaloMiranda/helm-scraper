@@ -19,8 +19,7 @@ RUN curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-v3.13.0-linux-amd64.tar.g
 WORKDIR /app
 
 # Copiar los archivos del proyecto
-COPY app.py /app/
-COPY notion_integration.py /app/
+COPY *.py /app/
 COPY requirements.txt /app/
 
 # Instalar dependencias de Python
