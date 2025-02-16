@@ -1,6 +1,6 @@
 import subprocess
 import json
-from kubernetes import client, config
+from kubernetes import client
 
 def get_helm_releases(namespace=None):
     """
@@ -34,10 +34,6 @@ def list_namespaces():
     Lista todos los namespaces disponibles en el cluster.
     :return: Lista de namespaces.
     """
-    try:
-        config.load_incluster_config()  # Si se ejecuta dentro del cluster
-    except config.ConfigException:
-        config.load_kube_config()  # Si se ejecuta localmente
 
     try:
         v1 = client.CoreV1Api()

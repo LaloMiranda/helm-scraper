@@ -1,27 +1,18 @@
 import requests
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-
-# Configuración
-ARGOCD_SERVER = os.getenv("ARGOCD_SERVER")
-ARGOCD_USERNAME = os.getenv("ARGOCD_USERNAME")
-ARGOCD_PASSWORD = os.getenv("ARGOCD_PASSWORD")
-
-def get_argocd_token():
+def get_argocd_token(argocd_server, argocd_username, argocd_password):
     """Obtiene un token de autenticación en ArgoCD."""
-    url = f"{ARGOCD_SERVER}/api/v1/session"
-    response = requests.post(url, json={"username": ARGOCD_USERNAME, "password": ARGOCD_PASSWORD})
+    url = f"{argocd_server}/api/v1/session"
+    response = requests.post(url, json={"username": argocd_username, "password": argocd_password})
     
     if response.status_code == 200:
         return response.json()["token"]
     else:
         raise Exception(f"Error al obtener token: {response.text}")
 
-def get_applications(token):
+def get_applications(argocd_server, token):
     """Obtiene el listado de aplicaciones desde ArgoCD."""
-    url = f"{ARGOCD_SERVER}/api/v1/applications"
+    url = f"{argocd_server}/api/v1/applications"
     headers = {"Authorization": f"Bearer {token}"}
     
     response = requests.get(url, headers=headers)
@@ -31,8 +22,7 @@ def get_applications(token):
     else:
         raise Exception(f"Error al obtener aplicaciones: {response.text}")
 
-def process_application_sets(apps):
-    """Procesa solo los ApplicationSets."""
+def process_application(apps):
     app_data = []
 
     for app in apps:
@@ -62,24 +52,8 @@ def process_application_sets(apps):
             "name": name,
             "namespace": namespace,
             "chart_version": chart_version,
-            "app_version": app_version
+            "app_version": app_version,
+            "manager": "ArgoCD"
         })
     
     return app_data
-
-if __name__ == "__main__":
-    try:
-        token = get_argocd_token()
-        apps = get_applications(token)
-
-        # Procesamos solo los ApplicationSets
-        app_sets = process_application_sets(apps)
-
-        # Imprimimos resultados de ApplicationSets
-        print("\n🔹 ApplicationSets:")
-        for app in app_sets:
-            print(f"Nombre: {app['name']}, Namespace: {app['namespace']}, "
-                  f"Chart Version: {app['chart_version']}, App Version: {app['app_version']}")
-
-    except Exception as e:
-        print(f"Error: {e}")
