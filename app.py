@@ -1,69 +1,41 @@
-from kubernetes import client, config
-import subprocess
-import json
 import os
-from notion_client import Client
 from dotenv import load_dotenv
-from notion_integration import add_or_update_release  # Importamos la función de Notion
+from notion_client import Client
+from kubernetes import client, config
+
+from helm_scraper import get_helm_releases, list_namespaces
+from notion_integration import add_or_update_release
+from argo import get_argocd_token, get_applications, process_application
 
 load_dotenv()
 
 # Configurar cliente de Notion
 notion = Client(auth=os.getenv("NOTION_TOKEN"))
-
-# ID de la base de datos de Notion
 DATABASE_ID = os.getenv("DATABASE_ID")
 
-def get_helm_releases(namespace=None):
-    """
-    Ejecuta el comando `helm list` para obtener todas las releases de Helm en un namespace.
-    :param namespace: Namespace a filtrar (opcional). Si es None, busca en todos los namespaces.
-    :return: Lista de releases con sus detalles.
-    """
-    try:
-        cmd = ["helm", "list", "--all", "--output", "json"]
-        if namespace:
-            cmd.extend(["--namespace", namespace])
-
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-        releases = json.loads(result.stdout)  # Convertimos la salida JSON en un diccionario
-
-        return releases
-    except subprocess.CalledProcessError as e:
-        print(f"Error ejecutando Helm: {e.stderr}")
-        return []
-    except Exception as e:
-        print(f"Error inesperado: {e}")
-        return []
-
-def list_namespaces():
-    """
-    Lista todos los namespaces disponibles en el cluster.
-    :return: Lista de namespaces.
-    """
-    try:
-        v1 = client.CoreV1Api()
-        namespaces = v1.list_namespace()
-        return [ns.metadata.name for ns in namespaces.items]
-    except Exception as e:
-        print(f"Error al listar namespaces: {e}")
-        return []
+# Configuracion de accesos a Argo
+ARGOCD_ENABLED = os.getenv("ARGOCD_ENABLED", "false").lower() in ["true", "1", "yes"]
+ARGOCD_SERVER = os.getenv("ARGOCD_SERVER")
+ARGOCD_USERNAME = os.getenv("ARGOCD_USERNAME")
+ARGOCD_PASSWORD = os.getenv("ARGOCD_PASSWORD")
 
 if __name__ == "__main__":
-    # Cargar la configuración del cluster
     try:
         config.load_incluster_config()  # Si se ejecuta dentro del cluster
     except config.ConfigException:
         config.load_kube_config()  # Si se ejecuta localmente
 
-    # Obtener todos los namespaces
+
+    ##### Ejecucion para la obtencion de aplicaciones instaladas con helm de manera directa
+
+    # Obtener todos los namespaces disponibles
     namespaces = list_namespaces()
     if not namespaces:
         print("No se encontraron namespaces en el cluster.")
     else:
         print(f"Namespaces encontrados: {namespaces}")
 
-    # Obtener releases de Helm para cada namespace y registrarlas en Notion
+    # Obtener releases de Helm y registrar en Notion
     for namespace in namespaces:
         print(f"\nObteniendo releases de Helm en el namespace '{namespace}':")
         releases = get_helm_releases(namespace=namespace)
@@ -74,14 +46,38 @@ if __name__ == "__main__":
 
         for release in releases:
             release_name = release.get("name")
-            revision = int(release.get("revision", 0))
             app_version = release.get("app_version", "N/A")
-            chart_version = release.get("chart", "N/A")  # Notion solo admite strings
+            chart_version = release.get("chart", "N/A")
+            namespace = release.get("namespace", "N/A")
+            manager = release.get("manager", "N/A")
 
-            # Registrar en Notion
+
             add_or_update_release(
+                notion=notion,
+                database_id=DATABASE_ID,
                 name=release_name,
-                revision=revision,
+                namespace=namespace,
                 app_version=app_version,
-                chart_version=chart_version
+                chart_version=chart_version,
+                manager=manager
             )
+
+    ##### Ejecucion para la obtencion de aplicaciones gestionadas con Argo
+    if(ARGOCD_ENABLED):
+        # Autenticacion a Argo
+        token = get_argocd_token(ARGOCD_SERVER,ARGOCD_USERNAME,ARGOCD_PASSWORD)
+        # Obtenemos el listado de apps
+        apps = get_applications(ARGOCD_SERVER,token)
+        # Procesamos la info de las applications
+        app_sets = process_application(apps)
+
+        for app in app_sets:
+            add_or_update_release(
+                    notion=notion,
+                    database_id=DATABASE_ID,
+                    name=app['name'],
+                    namespace=app['namespace'],
+                    app_version=app['app_version'],
+                    chart_version=app['chart_version'],
+                    manager=app['manager']
+                )
